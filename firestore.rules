@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.email == "okwarasharon123@gmail.com";
+    }
+    function isValidString(text, min, max) {
+      return text is string && text.size() >= min && text.size() <= max;
+    }
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    match /messages/{messageId} {
+      // Anyone can create a message (contact form)
+      allow create: if isValidString(request.resource.data.name, 1, 100) &&
+                       isValidEmail(request.resource.data.email) &&
+                       isValidString(request.resource.data.subject, 1, 200) &&
+                       isValidString(request.resource.data.message, 1, 5000) &&
+                       request.resource.data.createdAt is timestamp;
+      // Only admin can read/update/delete
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /registrations/{registrationId} {
+      // Anyone can register for a training
+      allow create: if isValidString(request.resource.data.trainingId, 1, 100) &&
+                       isValidString(request.resource.data.trainingTitle, 1, 200) &&
+                       isValidString(request.resource.data.name, 1, 100) &&
+                       isValidEmail(request.resource.data.email) &&
+                       request.resource.data.createdAt is timestamp;
+      // Only admin can read/update/delete
+      allow read, update, delete: if isAdmin();
+    }
+  }
+}
